@@ -1547,6 +1547,8 @@ void *CGame::GetMainWindowPlatformSpecificHandle( void )
 #ifdef WIN32
 	return (void*)m_hWindow;
 #else
+
+#ifdef OSX
 	SDL_SysWMinfo pInfo;
 	SDL_VERSION( &pInfo.version );
 	if ( !SDL_GetWindowWMInfo( (SDL_Window*)m_pSDLWindow, &pInfo ) )
@@ -1554,8 +1556,6 @@ void *CGame::GetMainWindowPlatformSpecificHandle( void )
 		Error( "Fatal Error: Unable to get window info from SDL." );
 		return NULL;
 	}
-
-#ifdef OSX
 	id nsWindow = (id)pInfo.info.cocoa.window;
 	SEL selector = sel_registerName("windowRef");
 	id windowRef = objc_msgSend( nsWindow, selector );
