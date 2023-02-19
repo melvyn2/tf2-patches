@@ -2607,7 +2607,15 @@ bool KeyValues::WriteAsBinary( CUtlBuffer &buffer )
 		{
 		case TYPE_NONE:
 			{
-				dat->m_pSub->WriteAsBinary( buffer );
+				if (dat->m_pSub)
+				{
+					dat->m_pSub->WriteAsBinary( buffer );
+				}
+				else {
+					// There was no m_pSub, create a fake empty KeyValues manually.
+					// write tail, marks end of peers
+					buffer.PutUnsignedChar( TYPE_NUMTYPES ); 
+				}
 				break;
 			}
 		case TYPE_STRING:
