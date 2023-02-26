@@ -1100,7 +1100,7 @@ $Project "engine"
 		$Lib	appframework
 		$Lib	bitmap
 		$Lib	"$LIBCOMMON/bzip2"
-		$Lib  	"$LIBCOMMON/libjpeg"			[!$DEDICATED]
+		$Lib  	"$LIBCOMMON/jpeglib"			[!$DEDICATED]
 
 		$Lib	dmxloader
 		$Lib	mathlib

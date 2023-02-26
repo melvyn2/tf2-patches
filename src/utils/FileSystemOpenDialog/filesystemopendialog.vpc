@@ -71,6 +71,6 @@ $Project "FileSystemOpenDialog"
 
 	$Folder "Link Libraries"
 	{
-		$Lib $LIBCOMMON/libjpeg
+		$Lib $LIBCOMMON/jpeglib
 	}
 }
