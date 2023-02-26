@@ -16,6 +16,9 @@ elif [[ "$1" == "-b" ]]; then
 	# shellcheck disable=SC2086
 	MANGOHUD_DLSYM=1 MANGOHUD_CONFIG="output_folder=${PWD}/../benchlogs,toggle_logging=F12" $MANGO \
 		"${PWD}"/hl2_linux ${ARGS} "+bind f12 demo_resume" "+fps_max 0" "+playdemo demos/${2}" "+demo_pause"
+elif [[ "$1" == "-s" ]]; then
+	# shellcheck disable=SC2068
+	"${PWD}"/srcds_linux ${ARGS} $@
 else
 	# shellcheck disable=SC2086
 	MANGOHUD_DLSYM=1 ${MANGO} "${PWD}"/hl2_linux ${ARGS} $@

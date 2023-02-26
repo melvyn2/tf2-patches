@@ -2,3 +2,7 @@
 	path = src/thirdparty/gperftools-2.0
 	url = https://github.com/gperftools/gperftools.git
 	branch = bf8b714bf5075d0a6f2f28504b43095e2b1e11c5
+[submodule "src/thirdparty/libedit-3.1"]
+	path = src/thirdparty/libedit-3.1
+	url = https://salsa.debian.org/debian/libedit.git
+	branch = upstream

@@ -16,6 +16,7 @@ MAKE_CFG="CFG=release"
 MAKE_VERBOSE=""
 VPC_FLAGS="/define:LTCG /define:CERT"
 CORES=$(nproc)
+DEDICATED=false
 export CC="${PWD}/devtools/bin/linux/ccache gcc"
 export CXX="${PWD}/devtools/bin/linux/ccache g++"
 export VALVE_NO_AUTO_P4=1
@@ -35,6 +36,9 @@ while [[ ${1:0:1} == '-' ]]; do
 		"-dd")
 			VPC_FLAGS="/no_ceg /nofpo"
 			MAKE_CFG="CFG=debug"
+		;;
+		"-s")
+			DEDICATED=true
 		;;
 		"-c")
 			shift
@@ -114,10 +118,12 @@ git submodule update --init  # Fetch gperftools & other submodules
 cd src
 
 build_thirdparty "protobuf-2.6.1" "src/.libs/libprotobuf.a"
-#build_thirdparty "libedit-3.1" "src/.libs/libedit.a" "-std=c99"
-build_thirdparty "gperftools-2.0" ".libs/libtcmalloc_minimal.so" "-fpermissive"
-
-cp -Pf thirdparty/gperftools-2.0/.libs/libtcmalloc_minimal.so* ../game_clean/copy/bin/
+if [[ "${DEDICATED}" == true ]]; then
+	build_thirdparty "libedit-3.1" "src/.libs/libedit.a" "-std=c99"
+else
+	build_thirdparty "gperftools-2.0" ".libs/libtcmalloc_minimal.so" "-fpermissive"
+	cp -Pf thirdparty/gperftools-2.0/.libs/libtcmalloc_minimal.so* ../game_clean/copy/bin/
+fi
 
 if [[ ! -f "./devtools/bin/vpc_linux" ]]; then
 	pushd .
@@ -138,9 +144,16 @@ fi
 
 mkdir -p ../game  # Build products go here
 
-# shellcheck disable=SC2086   # we want arguments to be split
-devtools/bin/vpc_linux /define:WORKSHOP_IMPORT_DISABLE /define:SIXENSE_DISABLE /define:NO_X360_XDK \
-				/define:RAD_TELEMETRY_DISABLED /define:DISABLE_ETW /retail /tf ${VPC_FLAGS} +game /mksln games
+
+if [[ "${DEDICATED}" == true ]]; then
+	# shellcheck disable=SC2086   # we want arguments to be split
+	devtools/bin/vpc_linux /define:WORKSHOP_IMPORT_DISABLE /define:SIXENSE_DISABLE /define:NO_X360_XDK \
+					/define:RAD_TELEMETRY_DISABLED /define:DISABLE_ETW /define:DEDICATED /retail /tf ${VPC_FLAGS} +dedicated /mksln games
+else
+	# shellcheck disable=SC2086   # we want arguments to be split
+	devtools/bin/vpc_linux /define:WORKSHOP_IMPORT_DISABLE /define:SIXENSE_DISABLE /define:NO_X360_XDK \
+    					/define:RAD_TELEMETRY_DISABLED /define:DISABLE_ETW /retail /tf ${VPC_FLAGS} +game /mksln games
+fi
 
 time CFLAGS="${CF_SUPPRESSION}" CXXFLAGS="${CF_SUPPRESSION}" make ${MAKE_SRT_FLAGS} MAKE_VERBOSE="${MAKE_VERBOSE}" ${MAKE_CFG} \
 		MAKE_JOBS="$CORES" -f games.mak "$@"
