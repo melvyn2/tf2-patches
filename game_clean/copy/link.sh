@@ -17,18 +17,16 @@ if [[ ! -d "$ORIGINAL_INSTALL_DIR" ]]; then
 fi
 
 link_dir() {
-	ln -sn "${ORIGINAL_INSTALL_DIR}/$1" "$1"
+	ln --no-dereference --symbolic "${ORIGINAL_INSTALL_DIR}/$1" "$1"
 }
 
 link_glob() {
-	ln -sn "${ORIGINAL_INSTALL_DIR}/$1/"*"$2" "$1/"
+	ln --no-dereference --symbolic "${ORIGINAL_INSTALL_DIR}/$1/"*"$2" "$1/"
 }
 
 copy () {
-	cp -rfT --remove-destination "${ORIGINAL_INSTALL_DIR}/$1" "$1"
+	cp --force --no-target-directory --recursive --remove-destination "${ORIGINAL_INSTALL_DIR}/$1" "$1"
 }
-
-cp -rfT game_clean/copy/ ./
 
 link_dir hl2
 link_dir platform
