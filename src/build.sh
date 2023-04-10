@@ -84,33 +84,33 @@ if [[ -n ${CHROOT_NAME} ]]; then
 fi
 
 build_thirdparty() {
-  if [[ ! -f "thirdparty/$1/$2" ]]; then
-    pushd .
-    cd "thirdparty/$1/"
-    local EXTRA_CFLAGS=$3
-    local CFLAGS="-m32 -Wno-reserved-user-defined-literal -D_GLIBCXX_USE_CXX11_ABI=0 ${EXTRA_CFLAGS} ${CF_SUPPRESSION}"
-    if [[ -n ${CHROOT_NAME} ]]; then
-      schroot --chroot "${CHROOT_NAME}" -- /bin/bash << EOF
-        export PATH=/bin:/usr/bin
-        export CC="$CC"
-        export CXX="$CXX"
-        autoreconf -i
-        chmod u+x configure
-        ./configure "CFLAGS=${CFLAGS}" \
-          "CXXFLAGS=${CFLAGS}" \
-          "LDFLAGS=-m32"
-        make "-j$CORES"
+	if [[ ! -f "thirdparty/$1/$2" ]]; then
+		pushd .
+		cd "thirdparty/$1/"
+		local EXTRA_CFLAGS=$3
+		local CFLAGS="-m32 -Wno-reserved-user-defined-literal -D_GLIBCXX_USE_CXX11_ABI=0 ${EXTRA_CFLAGS} ${CF_SUPPRESSION}"
+		if [[ -n ${CHROOT_NAME} ]]; then
+			schroot --chroot "${CHROOT_NAME}" -- /bin/bash << EOF
+				export PATH=/bin:/usr/bin
+				export CC="$CC"
+				export CXX="$CXX"
+				autoreconf -i
+				chmod u+x configure
+				./configure "CFLAGS=${CFLAGS}" \
+					"CXXFLAGS=${CFLAGS}" \
+					"LDFLAGS=-m32"
+				make "-j$CORES"
 EOF
-    else
-      autoreconf -i
-      chmod u+x configure
-      ./configure "CFLAGS=${CFLAGS}" \
-        "CXXFLAGS=${CFLAGS}" \
-        "LDFLAGS=-m32"
-      make "-j$CORES"
-    fi
-    popd
-  fi
+		else
+			autoreconf -i
+			chmod u+x configure
+			./configure "CFLAGS=${CFLAGS}" \
+				"CXXFLAGS=${CFLAGS}" \
+				"LDFLAGS=-m32"
+			make "-j$CORES"
+		fi
+		popd
+	fi
 }
 
 cd ..
@@ -119,6 +119,8 @@ cd src
 
 build_thirdparty "protobuf-2.6.1" "src/.libs/libprotobuf.a"
 if [[ "${DEDICATED}" == true ]]; then
+	# Old autotools compat hack
+	sed 's/AC_CHECK_INCLUDES_DEFAULT/#/' -i 'thirdparty/libedit-3.1/configure.ac'
 	build_thirdparty "libedit-3.1" "src/.libs/libedit.a" "-std=c99"
 else
 	build_thirdparty "gperftools-2.0" ".libs/libtcmalloc_minimal.so" "-fpermissive"
