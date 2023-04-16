@@ -68,7 +68,7 @@ struct RagdollInfo_t
 	float		m_flSaveTime;
 	int			m_nNumBones;
 	Vector		m_rgBonePos[MAXSTUDIOBONES];
-	Quaternion	m_rgBoneQuaternion[MAXSTUDIOBONES];
+	QuaternionAligned	m_rgBoneQuaternion[MAXSTUDIOBONES];
 };
 
 
@@ -265,6 +265,7 @@ public:
 	// Attachments.
 	bool							GetAttachment( const char *szName, Vector &absOrigin );
 	bool							GetAttachment( const char *szName, Vector &absOrigin, QAngle &absAngles );
+	virtual bool			GetAttachmentDeferred( int number, matrix3x4_t &matrix );
 
 	// Inherited from C_BaseEntity
 	virtual bool					GetAttachment( int number, Vector &origin );

@@ -160,7 +160,7 @@ void CHudTournament::PlaySounds( int nTime )
 			}
 			break;
 		}
-		case 10:
+		case 15:
 		{
 			if ( TFGameRules() && TFGameRules()->IsMannVsMachineMode() )
 			{
@@ -184,7 +184,11 @@ void CHudTournament::PlaySounds( int nTime )
 					pLocalPlayer->EmitSound( "Announcer.MVM_Wave_Start" );
 				}
 			}
-			else
+			break;
+		}
+		case 10:
+		{
+			if ( TFGameRules() && !TFGameRules()->IsMannVsMachineMode() )
 			{
 				pLocalPlayer->EmitSound( bCompetitiveMode ? "Announcer.CompGame1Begins10Seconds" : "Announcer.RoundBegins10Seconds" );
 			}
@@ -299,15 +303,15 @@ void CHudTournament::PreparePanel( void )
 					pszLabelText = "Tournament_Instructions_Waiting";
 				}
 
-				SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( pszLabelText ) );
-				SetDialogVariable( "tournamentstatelabel", g_pVGuiLocalize->Find( "Tournament_WaitingForTeam" ) );
+				SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( pszLabelText ), false );
+				SetDialogVariable( "tournamentstatelabel", g_pVGuiLocalize->Find( "Tournament_WaitingForTeam" ), false );
 				SetPlayerPanelsVisible( true );
 				m_pModeImage->SetVisible( m_bCompetitiveMode );
 			}
 			else
 			{
-				SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "Tournament_Instructions" ) );
-				SetDialogVariable( "tournamentstatelabel", g_pVGuiLocalize->Find( "Tournament_WaitingForTeams" ) );
+				SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "Tournament_Instructions" ), false );
+				SetDialogVariable( "tournamentstatelabel", g_pVGuiLocalize->Find( "Tournament_WaitingForTeams" ), false );
 				SetPlayerPanelsVisible( false );
 				m_pModeImage->SetVisible( false );
 			}
@@ -315,7 +319,7 @@ void CHudTournament::PreparePanel( void )
 		else
 		{
 			float flTime = TFGameRules()->GetRoundRestartTime() - gpGlobals->curtime;
-			int nTime = (int)( ceil( flTime ) );
+			int nTime = Ceil2Int( flTime );
 			
 			wchar szCountdown[64];
 			wchar_t wzVal[16];
@@ -333,18 +337,18 @@ void CHudTournament::PreparePanel( void )
 			if ( pFormatString )
 			{
 				g_pVGuiLocalize->ConstructString_safe( szCountdown, pFormatString, 1, wzVal );
-				SetDialogVariable( "tournamentstatelabel", szCountdown );
+				SetDialogVariable( "tournamentstatelabel", szCountdown, false );
 			}
 
 			if ( bAutoReady )
 			{
-				SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "" ) );
+				SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "" ), false );
 				m_pModeImage->SetVisible( false );
 				SetPlayerPanelsVisible( false );
 			}
 			else if ( nTime <= TOURNAMENT_NOCANCEL_TIME )
 			{
-				SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "" ) );
+				SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "" ), false );
 			}
 			else
 			{
@@ -352,17 +356,17 @@ void CHudTournament::PreparePanel( void )
 				{
 					if ( bSteamController )
 					{
-						SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "Tournament_Instructions_Ready_NoKeyHintText" ) );
+						SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "Tournament_Instructions_Ready_NoKeyHintText" ), false );
 						bShowReadyHintIcon = true;
 					}
 					else
 					{
-						SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "Tournament_Instructions_Ready" ) );
+						SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "Tournament_Instructions_Ready" ), false );
 					}
 				}
 				else
 				{
-					SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "" ) );
+					SetDialogVariable( "readylabel", g_pVGuiLocalize->Find( "" ), false );
 				}
 			}
 
@@ -411,13 +415,13 @@ void CHudTournament::PreparePanel( void )
 #endif
 	
 	C_TFTeam *pBlueTeam = GetGlobalTFTeam( TF_TEAM_BLUE );
-	SetDialogVariable( "bluenamelabel", pBlueTeam ? pBlueTeam->Get_Localized_Name() : L"BLU" );
+	SetDialogVariable( "bluenamelabel", pBlueTeam ? pBlueTeam->Get_Localized_Name() : L"BLU", false );
 
 	C_TFTeam *pRedTeam = GetGlobalTFTeam( TF_TEAM_RED );
-	SetDialogVariable( "rednamelabel", pRedTeam ? pRedTeam->Get_Localized_Name() : L"RED" );
+	SetDialogVariable( "rednamelabel", pRedTeam ? pRedTeam->Get_Localized_Name() : L"RED", false );
 
-	SetDialogVariable( "bluestate", TFGameRules()->IsTeamReady( TF_TEAM_BLUE ) ? g_pVGuiLocalize->Find( "Tournament_TeamReady" ) : g_pVGuiLocalize->Find( "Tournament_TeamNotReady" ) );
-	SetDialogVariable( "redstate", TFGameRules()->IsTeamReady( TF_TEAM_RED ) ? g_pVGuiLocalize->Find( "Tournament_TeamReady" ) : g_pVGuiLocalize->Find( "Tournament_TeamNotReady" ) );
+	SetDialogVariable( "bluestate", TFGameRules()->IsTeamReady( TF_TEAM_BLUE ) ? g_pVGuiLocalize->Find( "Tournament_TeamReady" ) : g_pVGuiLocalize->Find( "Tournament_TeamNotReady" ), false );
+	SetDialogVariable( "redstate", TFGameRules()->IsTeamReady( TF_TEAM_RED ) ? g_pVGuiLocalize->Find( "Tournament_TeamReady" ) : g_pVGuiLocalize->Find( "Tournament_TeamNotReady" ), false );
 	
 	if ( m_bTeamReady[TF_TEAM_BLUE] != TFGameRules()->IsTeamReady( TF_TEAM_BLUE ) || m_bTeamReady[TF_TEAM_RED] != TFGameRules()->IsTeamReady( TF_TEAM_RED ) )
 	{
@@ -475,7 +479,7 @@ void CHudTournament::PreparePanel( void )
 		_snwprintf( szWindConditions, ARRAYSIZE( szWindConditions ), STRING_FMT STRING_FMT, szWindConditions, g_pVGuiLocalize->Find( "Tournament_WinConditionsNone" ) );
 	}
 
-	SetDialogVariable( "winconditions", szWindConditions );
+	SetDialogVariable( "winconditions", szWindConditions, false );
 }
 
 //-----------------------------------------------------------------------------
@@ -1199,7 +1203,7 @@ void CHudTournamentSetup::OnTick( void )
 			m_pNameEntry->SetText( ( iLocalTeam == TF_TEAM_BLUE ) ? mp_tournament_blueteamname.GetString() : mp_tournament_redteamname.GetString() );
 		}
 
-		SetDialogVariable( "tournamentstatelabel", TFGameRules()->IsTeamReady( iLocalTeam ) ? g_pVGuiLocalize->Find( "Tournament_TeamSetupReady" ) : g_pVGuiLocalize->Find( "Tournament_TeamSetupNotReady" ) );
+		SetDialogVariable( "tournamentstatelabel", TFGameRules()->IsTeamReady( iLocalTeam ) ? g_pVGuiLocalize->Find( "Tournament_TeamSetupReady" ) : g_pVGuiLocalize->Find( "Tournament_TeamSetupNotReady" ), false );
 
 		m_flNextThink = gpGlobals->curtime + TOURNAMENT_PANEL_UPDATE_INTERVAL;
 	}
@@ -1431,7 +1435,7 @@ void CHudStopWatch::OnTick( void )
 
 			m_pStopWatchImage->SetImage( "../hud/ico_time_none" );
 
-			SetDialogVariable( "stopwatchlabel", g_pVGuiLocalize->Find( "Tournament_StopWatchNoCap" ) );
+			SetDialogVariable( "stopwatchlabel", g_pVGuiLocalize->Find( "Tournament_StopWatchNoCap" ), false );
 		}
 		else if ( TFGameRules()->GetStopWatchState() == STOPWATCH_RUNNING )
 		{
@@ -1472,8 +1476,8 @@ void CHudStopWatch::OnTick( void )
 				pszPoints = g_pVGuiLocalize->Find( "#Tournament_StopWatch_Points" );
 			}
 			
-			SetDialogVariable( "pointslabel", pszPoints );
-			SetDialogVariable( "scoretobeat", wzScoreVal );
+			SetDialogVariable( "pointslabel", pszPoints, false );
+			SetDialogVariable( "scoretobeat", wzScoreVal, false );
 
 			wchar_t wzHelp[128];
 
@@ -1486,7 +1490,7 @@ void CHudStopWatch::OnTick( void )
 				g_pVGuiLocalize->ConstructString_safe( wzHelp, g_pVGuiLocalize->Find( "Tournament_StopWatch_TimeVictoryDefender" ), 1, pDefender->Get_Localized_Name() );
 			}
 
-			SetDialogVariable( "descriptionlabel", wzHelp );
+			SetDialogVariable( "descriptionlabel", wzHelp, false );
 
 			if ( pTimer && !pTimer->IsWatchingTimeStamps() )
 			{
@@ -1509,7 +1513,7 @@ void CHudStopWatch::OnTick( void )
 			m_pStopWatchDescriptionBG->SetVisible( false );
 			m_pStopWatchDescriptionLabel->SetVisible( false );
 
-			SetDialogVariable( "descriptionlabel", g_pVGuiLocalize->Find( "#Tournament_StopWatch_CapVictory" ) );
+			SetDialogVariable( "descriptionlabel", g_pVGuiLocalize->Find( "#Tournament_StopWatch_CapVictory" ), false );
 
 			m_pStopWatchImage->SetImage( "../hud/ico_time_60" );
 
@@ -1533,7 +1537,7 @@ void CHudStopWatch::OnTick( void )
 				g_pVGuiLocalize->ConstructString_safe( wzScoreVal, g_pVGuiLocalize->Find( "Tournament_StopWatchPointCaptureSpectator" ), 2, wzVal, iPoints == 1 ? g_pVGuiLocalize->Find( "#Tournament_StopWatch_Point" ) : g_pVGuiLocalize->Find( "#Tournament_StopWatch_Points" )  );
 			}
 
-			SetDialogVariable( "stopwatchlabel", wzScoreVal );	
+			SetDialogVariable( "stopwatchlabel", wzScoreVal, false );	
 		}
 	}
 }

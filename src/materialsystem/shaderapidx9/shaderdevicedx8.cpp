@@ -2202,7 +2202,7 @@ IDirect3DDevice9* CShaderDeviceDx8::InvokeCreateDevice( void* hWnd, int nAdapter
 	// Create the device with multi-threaded safeguards if we're using mat_queue_mode 2.
 	// The logic to enable multithreaded rendering happens well after the device has been created, 
 	// so we replicate some of that logic here.
-	ConVarRef mat_queue_mode( "mat_queue_mode" );
+	static ConVarRef mat_queue_mode( "mat_queue_mode" );
 	if ( mat_queue_mode.GetInt() == 2 ||
 		 ( mat_queue_mode.GetInt() == -2 && GetCPUInformation()->m_nPhysicalProcessors >= 2 ) ||
 	     ( mat_queue_mode.GetInt() == -1 && GetCPUInformation()->m_nPhysicalProcessors >= 2 ) )
@@ -2400,6 +2400,15 @@ bool CShaderDeviceDx8::CreateD3DDevice( void* pHWnd, int nAdapter, const ShaderD
 	GetWindowSize( m_nWindowWidth, m_nWindowHeight );
 
 	g_pHardwareConfig->SetupHardwareCaps( info, g_ShaderDeviceMgrDx8.GetHardwareCaps( nAdapter ) );
+
+#if defined(IS_WINDOWS_PC) && defined(SHADERAPIDX9)
+	if ( g_ShaderDeviceUsingD3D9Ex )
+	{
+		Dx9ExDevice()->SetMaximumFrameLatency(1);
+		static ConVarRef mat_forcehardwaresync("mat_forcehardwaresync");
+		mat_forcehardwaresync.SetValue(0);
+	}
+#endif
 
 	// FIXME: Bake this into hardware config
 	// What texture formats do we support?
@@ -3371,20 +3380,35 @@ void CShaderDeviceDx8::Present()
 	// if we're in queued mode, don't present if the device is already lost
 	bool bValidPresent = true;
 	bool bInMainThread = ThreadInMainThread();
-	if ( !bInMainThread )
+	static bool s_bSetPriority = true;
+	if ( bInMainThread )
+	{
+		s_bSetPriority = true;
+	}
+	else
 	{
 		// don't present if the device is in an invalid state and in queued mode
 		if ( m_DeviceState != DEVICE_STATE_OK )
 		{
+			s_bSetPriority = true;
 			bValidPresent = false;
 		}
 		// check for lost device early in threaded mode
 		CheckDeviceLost( m_bOtherAppInitializing );
 		if ( m_DeviceState != DEVICE_STATE_OK )
 		{
+			s_bSetPriority = true;
 			bValidPresent = false;
 		}
 	}
+#if defined(IS_WINDOWS_PC) && defined(SHADERAPIDX9)
+	if ( bValidPresent && s_bSetPriority && g_ShaderDeviceUsingD3D9Ex )
+	{
+		s_bSetPriority = false;
+		Dx9ExDevice()->SetGPUThreadPriority(7);
+		Dx9ExDevice()->SetMaximumFrameLatency(2);
+	}
+#endif
 	// Copy the back buffer into the non-interactive temp buffer
 	if ( m_NonInteractiveRefresh.m_Mode == MATERIAL_NON_INTERACTIVE_MODE_LEVEL_LOAD )
 	{

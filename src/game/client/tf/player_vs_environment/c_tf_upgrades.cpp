@@ -573,9 +573,18 @@ void CHudUpgradePanel::SetActive( bool bActive )
 		OnTick();
 
 		m_bAwardMaxSlotAchievement = false;
+
+		if (TFGameRules()->State_Get() == GR_STATE_BETWEEN_RNDS && !m_bInspectMode)
+		{
+			// Maybe a custom map is already playing the sound.
+			C_TFPlayer::GetLocalTFPlayer()->StopSound("music.mvm_upgrade_machine");
+			C_TFPlayer::GetLocalTFPlayer()->EmitSound("music.mvm_upgrade_machine");
+		}
 	}
 	else if ( !bActive && IsActive() )
 	{
+		C_TFPlayer::GetLocalTFPlayer()->StopSound("music.mvm_upgrade_machine");
+
 		if ( m_bCancelUpgrades )
 		{
 			CancelUpgrades();
@@ -707,7 +716,7 @@ void CHudUpgradePanel::PlayerInventoryChanged( C_TFPlayer *pPlayer )
 				continue;
 
 			// If the item has changed since the panel was created, cancel out of the upgrade screen
-			if ( pItemSlotBuyPanel->GetItemID() != pCurrentItem->GetItemID() )
+			if ( pItemSlotBuyPanel->GetItemID() != pCurrentItem->GetItemDefIndex() )
 			{
 				OnCommand( "cancel" );
 				return;
@@ -1140,7 +1149,7 @@ void CHudUpgradePanel::UpdateUpgradeButtons( void )
 				CEconItemView *pCurItemData = CTFPlayerSharedUtils::GetEconItemViewByLoadoutSlot( m_hPlayer, pItemSlotBuyPanel->nSlot );
 				if ( pCurItemData )
 				{
-					pItemSlotBuyPanel->SetItemID( pCurItemData->GetItemID() );
+					pItemSlotBuyPanel->SetItemID( pCurItemData->GetItemDefIndex() );
 				}
 
 				if ( !m_bInspectMode )

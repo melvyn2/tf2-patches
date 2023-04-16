@@ -56,19 +56,15 @@
 #include "optimize.h"
 #include "networkstringtable.h"
 #include "tier1/callqueue.h"
+#include <vgui_controls/Controls.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
+#include "vgui/IVGui.h"
 
 ConVar mat_loadtextures( "mat_loadtextures", "1", FCVAR_CHEAT );
 
-// OS X and Linux are blowing up right now due to this.  Benefits vs possible regressions on DX less clear.
-#if defined( DX_TO_GL_ABSTRACTION ) || defined( STAGING_ONLY )
-	#define CONVAR_DEFAULT_MOD_OFFLINE_HDR_SWITCH "1"
-#else
-	#define CONVAR_DEFAULT_MOD_OFFLINE_HDR_SWITCH "0"
-#endif
-static ConVar mod_offline_hdr_switch( "mod_offline_hdr_switch", CONVAR_DEFAULT_MOD_OFFLINE_HDR_SWITCH, FCVAR_INTERNAL_USE,
+static ConVar mod_offline_hdr_switch( "mod_offline_hdr_switch", "1", FCVAR_INTERNAL_USE,
                                       "Re-order the HDR/LDR mode switch to do most of the material system "
                                       "reloading with the device offline. This reduces unnecessary device "
                                       "resource uploads and may drastically reduce load time and memory pressure "
@@ -4861,6 +4857,8 @@ void CModelLoader::Studio_ReloadModels( CModelLoader::ReloadType_t reloadType )
 #if !defined( SWDS )
 	if ( g_ClientDLL )
 		g_ClientDLL->InvalidateMdlCache();
+	if ( vgui::ivgui() )
+		vgui::ivgui()->InvalidateMdlCache();
 #endif // SWDS
 	if ( serverGameDLL )
 		serverGameDLL->InvalidateMdlCache();
@@ -5022,7 +5020,8 @@ void CModelLoader::Studio_LoadModel( model_t *pModel, bool bTouchAllData )
 	if ( bLoadPhysics && !bPreLoaded )
 	{
 		// load the collision data now
-		bool bSynchronous = bTouchAllData;
+		static ConVarRef mod_load_vcollide_async("mod_load_vcollide_async");
+		bool bSynchronous = bTouchAllData && !mod_load_vcollide_async.GetBool();
 		double t1 = Plat_FloatTime();
 		g_pMDLCache->GetVCollideEx( pModel->studio, bSynchronous );
 

@@ -106,7 +106,7 @@ bool R_LoadNamedSkys( const char *skyname )
 	bool		success = true;
 	const char	*skyboxsuffix[ 6 ] = { "rt", "bk", "lf", "ft", "up", "dn" };
 
-	bool bUseDx8Skyboxes = ( g_pMaterialSystemHardwareConfig->GetDXSupportLevel() < 90 );
+	bool bUseDx8Skyboxes = ( g_pMaterialSystemHardwareConfig->GetDXSupportLevel() < 90 || g_pMaterialSystemHardwareConfig->PreferReducedFillrate() );
 	for ( int i = 0; i < 6; i++ )
 	{
 		skies[i] = NULL;
@@ -165,7 +165,7 @@ void R_LoadSkys( void )
 
 	char requestedsky[ 128 ];
 
-	ConVarRef skyname( "sv_skyname" );
+	static ConVarRef skyname( "sv_skyname" );
 	if ( skyname.IsValid() )
 	{
 		Q_strncpy( requestedsky, skyname.GetString(), sizeof( requestedsky ) );

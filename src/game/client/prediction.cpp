@@ -1411,7 +1411,7 @@ int CPrediction::ComputeFirstCommandToExecute( bool received_new_world_update, i
 #ifdef STAGING_ONLY	
 		int nPredictedLimit = cl_pred_optimize_prefer_server_data.GetBool() ? m_nCommandsPredicted - 1 : m_nCommandsPredicted;
 #else
-		int nPredictedLimit = m_nCommandsPredicted;		
+		int nPredictedLimit = m_nCommandsPredicted - 1;		
 #endif // STAGING_ONLY
 		// Otherwise, there is a second optimization, wherein if we did receive an update, but no
 		//  values differed (or were outside their epsilon) and the server actually acknowledged running
@@ -1708,7 +1708,9 @@ void CPrediction::_Update( bool received_new_world_update, bool validframe,
 	Assert( C_BaseEntity::IsAbsQueriesValid() );
 	
 	// FIXME: What about hierarchy here?!?
+#if 0 // Where is this ever used?
 	SetIdealPitch( localPlayer, localPlayer->GetLocalOrigin(), localPlayer->GetLocalAngles(), localPlayer->m_vecViewOffset );
+#endif
 #endif
 }
 

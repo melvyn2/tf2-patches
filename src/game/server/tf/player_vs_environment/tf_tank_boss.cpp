@@ -244,6 +244,7 @@ CTFTankBoss::CTFTankBoss()
 	m_szDeathPostfix[ 0 ] = '\0';
 	m_flDroppingStart = 0.0f;
 	m_flSpawnTime = 0.0f;
+	m_flLastPlayerDamageCallout = 0.0f;
 }
 
 
@@ -530,7 +531,8 @@ void CTFTankBoss::UpdateOnRemove( void )
 
 int CTFTankBoss::OnTakeDamage_Alive( const CTakeDamageInfo &rawInfo )
 {
-	if ( static_cast< float >( GetHealth() ) / GetMaxHealth() > 0.3f )
+	bool bLightDamage = static_cast<float>(GetHealth()) / GetMaxHealth() > 0.3f;
+	if ( bLightDamage )
 	{
 		DispatchParticleEffect( "bot_impact_light", rawInfo.GetDamagePosition(), vec3_angle );
 	}
@@ -546,6 +548,12 @@ int CTFTankBoss::OnTakeDamage_Alive( const CTakeDamageInfo &rawInfo )
 		CTFPlayer *pTFPlayer = dynamic_cast< CTFPlayer* >( rawInfo.GetAttacker() );
 		if ( pTFPlayer )
 		{
+			if ( ( bLightDamage && rawInfo.GetDamage() > 50.0f || m_isDroppingBomb ) && m_flLastPlayerDamageCallout + 5.0f < gpGlobals->curtime)
+			{
+				m_flLastPlayerDamageCallout = gpGlobals->curtime;
+				pTFPlayer->SpeakConceptIfAllowed(MP_CONCEPT_MVM_ATTACK_THE_TANK);
+			}
+
 			// is the attacker being healed by any Medic(s)?
 			CUtlVector<CTFPlayer*> pTempPlayerQueue;
 			pTFPlayer->AddConnectedPlayers( pTempPlayerQueue, pTFPlayer );
@@ -929,6 +937,16 @@ void CTFTankBoss::ModifyDamage( CTakeDamageInfo *info ) const
 		const float minigunFactor = 0.25f;
 		info->SetDamage( info->GetDamage() * minigunFactor );
 	}
+
+	// Community request: Mannpower power ups in MvM
+	bool bIsObject = info->GetInflictor() && info->GetInflictor()->IsBaseObject(); 
+	CBaseEntity *pAttacker = info->GetAttacker();
+	CTFPlayer *pTFAttacker = ToTFPlayer( pAttacker );
+	// If attacker has Strength Powerup Rune, apply damage multiplier, but not if you're a building
+	if ( !bIsObject && pTFAttacker && pTFAttacker->m_Shared.GetCarryingRuneType() == RUNE_STRENGTH )
+	{
+		info->ScaleDamage( 2.f );
+	}
 }
 
 void CTFTankBoss::UpdateCollisionBounds( void )
@@ -1000,7 +1018,7 @@ void CTFTankBoss::Explode( void )
 	if ( m_bIsPlayerKilled )
 	{
 		TFGameRules()->BroadcastSound( 255, "Announcer.MVM_General_Destruction" );
-		TFGameRules()->HaveAllPlayersSpeakConceptIfAllowed( MP_CONCEPT_MVM_TANK_DEAD, TF_TEAM_PVE_DEFENDERS );
+		int iConcept = MP_CONCEPT_MVM_TANK_DEAD;
 
 		IGameEvent *event = gameeventmanager->CreateEvent( "mvm_tank_destroyed_by_players" );
 		if ( event )
@@ -1018,6 +1036,8 @@ void CTFTankBoss::Explode( void )
 				{
 					// anyone who has damaged the tank since the deploy anim began will get the achievement
 					float flWindow = gpGlobals->curtime - m_flDroppingStart;
+
+					iConcept = MP_CONCEPT_MVM_CLOSE_CALL;
 
 					for ( int i = 0; i < m_vecDamagers.Count(); i++ )
 					{
@@ -1063,6 +1083,8 @@ void CTFTankBoss::Explode( void )
 				EconEntity_OnOwnerKillEaterEventNoPartner( pTFPlayer->GetActiveTFWeapon(), pTFPlayer, kKillEaterEvent_TanksDestroyed );
 			}
 		}
+
+		TFGameRules()->HaveAllPlayersSpeakConceptIfAllowed( iConcept, TF_TEAM_PVE_DEFENDERS );
 	}
 }
 #define TANK_PING_TIME 5.0

@@ -1017,7 +1017,7 @@ void CTargetID::UpdateID( void )
 			if ( m_pMoveableSubPanel->IsVisible() )
 			{
 				const char *pBoundKey = engine->Key_LookupBinding( pszActionCommand );
-				m_pMoveableSubPanel->SetDialogVariable( "movekey", pBoundKey );
+				m_pMoveableSubPanel->SetDialogVariable( "movekey", pBoundKey, false );
 			}
 
 			if ( m_pMoveableIcon )
@@ -1061,7 +1061,7 @@ void CTargetID::UpdateID( void )
 				m_pTargetNameLabel->SetFgColor( colorName );
 
 				// TODO: Support	if( hud_centerid.GetInt() == 0 )
-				SetDialogVariable( "targetname", sIDString );
+				SetDialogVariable( "targetname", sIDString, false );
 			}
 			else
 			{
@@ -1076,7 +1076,7 @@ void CTargetID::UpdateID( void )
 				m_pTargetDataLabel->SetVisible(true);
 				m_pTargetDataLabel->SetFgColor( colorData );
 
-				SetDialogVariable( "targetdata", sDataString );
+				SetDialogVariable( "targetdata", sDataString, false );
 			}
 			else
 			{

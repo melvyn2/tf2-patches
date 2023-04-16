@@ -97,10 +97,13 @@ static void RecvProxy_TimerPaused( const CRecvProxyData *pData, void *pStruct, v
 
 	bool bTimerPaused = ( pData->m_Value.m_Int > 0 );
 
+	// UNDONE: Unused HUD animation
+#if 0
 	if ( bTimerPaused == false )
 	{
 		g_pClientMode->GetViewportAnimationController()->StartAnimationSequence( "TimerFlash" ); 
 	}
+#endif
 
 	if ( pTimer )
 	{
@@ -1150,7 +1153,7 @@ void CTeamRoundTimer::SetTimeRemaining( int iTimerSeconds )
 		{
 			float flStopWatchRemainingTime = pStopWatch->GetTimeRemaining();
 			flTimerSeconds = flStopWatchRemainingTime > 0 ? MIN( flTimerSeconds, flStopWatchRemainingTime ) : flTimerSeconds;
-			iTimerSeconds = (int)ceil( flTimerSeconds );
+			iTimerSeconds = Ceil2Int( flTimerSeconds );
 		}
 	}
 
@@ -1260,7 +1263,7 @@ void CTeamRoundTimer::AddTimerSeconds( int iSecondsToAdd, int iTeamResponsible /
 			{
 				// adjust to only add up to our stop watch timer
 				flSecondsToAdd = flStopWatchRemainingTime - flRemainingTime;
-				iSecondsToAdd = ( int )ceil( flSecondsToAdd );
+				iSecondsToAdd = Ceil2Int( flSecondsToAdd );
 			}
 		}
 	}
