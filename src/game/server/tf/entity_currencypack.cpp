@@ -18,6 +18,7 @@
 #include "player_vs_environment/tf_population_manager.h"
 #include "collisionutils.h"
 #include "tf_objective_resource.h"
+#include "func_respawnroom.h"
 
 //=============================================================================
 //
@@ -209,6 +210,21 @@ void CCurrencyPack::ComeToRest( void )
 			}
 		}
 	}
+	// Or a func_respawnroom
+	for ( int j = 0; j < IFuncRespawnRoomAutoList::AutoList().Count(); j++ )
+	{
+		CFuncRespawnRoom *pRespawnRoom = static_cast<CFuncRespawnRoom*>( IFuncRespawnRoomAutoList::AutoList()[j] );
+		Vector vecMins, vecMaxs;
+
+		pRespawnRoom->GetCollideable()->WorldSpaceSurroundingBounds( &vecMins, &vecMaxs );
+		if ( IsPointInBox( GetCollideable()->GetCollisionOrigin(), vecMins, vecMaxs ) )
+		{
+			TFGameRules()->DistributeCurrencyAmount( m_nAmount );
+
+			m_bTouched = true;
+			UTIL_Remove( this );
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -316,7 +332,7 @@ bool CCurrencyPack::MyTouch( CBasePlayer *pPlayer )
 		if ( ( !pTFTouchPlayer->IsPlayerClass( TF_CLASS_SPY ) ) ||
 			 ( !pTFTouchPlayer->m_Shared.IsStealthed() && !pTFTouchPlayer->m_Shared.InCond( TF_COND_STEALTHED_BLINK ) && !pTFTouchPlayer->m_Shared.InCond( TF_COND_DISGUISED ) ) )
 		{
-			pTFTouchPlayer->SpeakConceptIfAllowed( MP_CONCEPT_MVM_MONEY_PICKUP );
+			pTFTouchPlayer->SpeakConceptIfAllowed( m_blinkCount > 0 ? MP_CONCEPT_MVM_ENCOURAGE_MONEY : MP_CONCEPT_MVM_MONEY_PICKUP );
 		}
 
 		pTFTouchPlayer->SetLastObjectiveTime( gpGlobals->curtime );

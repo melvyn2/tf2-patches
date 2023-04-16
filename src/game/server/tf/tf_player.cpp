@@ -250,6 +250,8 @@ ConVar tf_highfive_max_range( "tf_highfive_max_range", "150", FCVAR_CHEAT | FCVA
 ConVar tf_highfive_height_tolerance( "tf_highfive_height_tolerance", "12", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY, "The maximum height difference allowed for two high-fivers." );
 ConVar tf_highfive_debug( "tf_highfive_debug", "0", FCVAR_NONE, "Turns on some console spew for debugging high five issues." );
 
+ConVar tf_taunt_first_person_always( "tf_taunt_first_person_always", "0", FCVAR_REPLICATED, "1 = taunts are forced to remain first-person" );
+
 ConVar tf_test_teleport_home_fx( "tf_test_teleport_home_fx", "0", FCVAR_CHEAT );
 
 ConVar tf_halloween_giant_health_scale( "tf_halloween_giant_health_scale", "10", FCVAR_CHEAT );
@@ -285,12 +287,12 @@ void CC_tf_debug_ballistic_targeting_mark_target( const CCommand &args )
 }
 static ConCommand tf_debug_ballistic_targeting_mark_target( "tf_debug_ballistic_targeting_mark_target", CC_tf_debug_ballistic_targeting_mark_target, "Mark a spot for testing ballistic targeting.", FCVAR_CHEAT );
 
-ConVar tf_infinite_ammo( "tf_infinite_ammo", "0", FCVAR_CHEAT );
-
 extern ConVar tf_bountymode_currency_starting;
 extern ConVar tf_bountymode_upgrades_wipeondeath;
 extern ConVar tf_bountymode_currency_penalty_ondeath;
 #endif // STAGING_ONLY
+
+ConVar tf_infinite_ammo( "tf_infinite_ammo", "0", FCVAR_CHEAT );
 
 ConVar tf_halloween_unlimited_spells( "tf_halloween_unlimited_spells", "0", FCVAR_CHEAT );
 extern ConVar tf_halloween_kart_boost_recharge;
@@ -1736,7 +1738,7 @@ void CTFPlayer::RegenThink( void )
 	}
 	else if ( m_flAccumulatedHealthRegen < -1.f )
 	{
-		nHealAmount = ceil( m_flAccumulatedHealthRegen );
+		nHealAmount = Ceil2Int( m_flAccumulatedHealthRegen );
 		TakeDamage( CTakeDamageInfo( this, this, NULL, vec3_origin, WorldSpaceCenter(), nHealAmount * -1, DMG_GENERIC ) );
 	}
 
@@ -1865,7 +1867,7 @@ void CTFPlayer::RuneRegenThink( void )
 	}
 	else if ( m_flAccumulatedRuneHealthRegen < -1.0 )
 	{
-		nHealAmount = ceil( m_flAccumulatedRuneHealthRegen );
+		nHealAmount = Ceil2Int( m_flAccumulatedRuneHealthRegen );
 		TakeDamage( CTakeDamageInfo( this, this, NULL, vec3_origin, WorldSpaceCenter(), nHealAmount * -1, DMG_GENERIC ) );
 	}
 
@@ -7398,7 +7400,10 @@ bool CTFPlayer::ClientCommand( const CCommand &args )
 				return true;
 
 			int iAltFireTeleportToSpawn = 0;
-			CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iAltFireTeleportToSpawn, alt_fire_teleport_to_spawn );
+			if ( gpGlobals->curtime >= pWeapon->GetLastReadyTime() )
+			{
+				CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iAltFireTeleportToSpawn, alt_fire_teleport_to_spawn );
+			}
 
 			if ( IsPlayerClass( TF_CLASS_ENGINEER ) && iAltFireTeleportToSpawn )
 			{
@@ -13652,12 +13657,10 @@ int CTFPlayer::GiveAmmo( int iCount, int iAmmoIndex, bool bSuppressSound, EAmmoS
 //-----------------------------------------------------------------------------
 void CTFPlayer::RemoveAmmo( int iCount, int iAmmoIndex )
 {
-#ifdef STAGING_ONLY
 	if ( tf_infinite_ammo.GetBool() )
 	{
 		return;
 	}
-#endif // STAGING_ONLY
 
 #if defined( _DEBUG ) || defined( STAGING_ONLY )
 	if ( mp_developer.GetInt() > 1 && !IsBot() )
@@ -13891,6 +13894,14 @@ void CTFPlayer::ForceRespawn( void )
 	if ( HasTheFlag() )
 	{
 		DropFlag();
+	}
+
+	// Prevent bypassing class limits. Whoever wins on the draw can spawn as this class,
+	// and anyone who comes after will get swapped back to their old class.
+	if (!TFGameRules()->CanPlayerChooseClass(this, iDesiredClass))
+	{
+		iDesiredClass = GetPlayerClass()->GetClassIndex();
+		ClientPrint( this, HUD_PRINTCENTER, "#TF_ClassLimitReached" ); // NOTE: Add localization string 
 	}
 
 	if ( GetPlayerClass()->GetClassIndex() != iDesiredClass )
@@ -17005,7 +17016,7 @@ void CTFPlayer::Taunt( taunts_t iTauntIndex, int iTauntConcept )
 				if ( m_Shared.GetRageMeter() >= 100.f )
 				{
 					m_Shared.m_bRageDraining = true;
-					EmitSound( "Heavy.Battlecry03" );
+					SpeakConceptIfAllowed( MP_CONCEPT_MVM_DEPLOY_RAGE );
 					return;
 				}
 
@@ -17096,6 +17107,7 @@ void CTFPlayer::Taunt( taunts_t iTauntIndex, int iTauntConcept )
 					m_Shared.ActivateRageBuff( this, iBuffType );
 
 					// Pyro needs high defense while he's taunting
+					m_bAllowMoveDuringTaunt = true; // Don't allow the taunt to be cancelled
 					//m_Shared.AddCond( TF_COND_DEFENSEBUFF_HIGH, 3.0f );
 					m_Shared.AddCond( TF_COND_INVULNERABLE_USER_BUFF, 2.60f );
 					m_Shared.AddCond( TF_COND_MEGAHEAL, 2.60f );
@@ -18517,7 +18529,7 @@ void CTFPlayer::ModifyOrAppendCriteria( AI_CriteriaSet& criteriaSet )
 	trace_t tr;
 	Vector forward;
 	EyeVectors( &forward );
-	UTIL_TraceLine( EyePosition(), EyePosition() + (forward * MAX_TRACE_LENGTH), MASK_BLOCKLOS_AND_NPCS, this, COLLISION_GROUP_NONE, &tr );
+	UTIL_TraceLine( EyePosition(), EyePosition() + (forward * 8192.0f), MASK_BLOCKLOS_AND_NPCS, this, COLLISION_GROUP_NONE, &tr );
 	if ( !tr.startsolid && tr.DidHitNonWorldEntity() )
 	{
 		CBaseEntity *pEntity = tr.m_pEnt;
@@ -21614,6 +21626,17 @@ bool CTFPlayer::CanBreatheUnderwater() const
 
 	return false;
 }
+
+//-----------------------------------------------------------------------------
+// Purpose: Debug concommand to stun the player
+//-----------------------------------------------------------------------------
+void StunPlayer()
+{
+	CTFPlayer* pPlayer = ToTFPlayer(ToTFPlayer(UTIL_PlayerByIndex(1)));
+	float flStunAmount = 0.60f;
+	pPlayer->m_Shared.StunPlayer(10.0f, flStunAmount, TF_STUN_MOVEMENT, pPlayer);
+}
+static ConCommand cc_StunPlayer("tf_stun_player", StunPlayer, "Stuns you.", FCVAR_CHEAT);
 
 //-----------------------------------------------------------------------------
 // Purpose: 

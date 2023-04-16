@@ -44,7 +44,7 @@ static ConVar net_maxfilesize( "net_maxfilesize", "16", 0, "Maximum allowed file
 static ConVar net_compresspackets( "net_compresspackets", "1", 0, "Use compression on game packets." );
 static ConVar net_compresspackets_minsize( "net_compresspackets_minsize", "1024", 0, "Don't bother compressing packets below this size." );
 static ConVar net_maxcleartime( "net_maxcleartime", "4.0", 0, "Max # of seconds we can wait for next packets to be sent based on rate setting (0 == no limit)." );
-static ConVar net_maxpacketdrop( "net_maxpacketdrop", "5000", 0, "Ignore any packets with the sequence number more than this ahead (0 == no limit)" );
+static ConVar net_maxpacketdrop( "net_maxpacketdrop", "0", 0, "Ignore any packets with the sequence number more than this ahead (0 == no limit)" );
 
 extern ConVar net_maxroutable;
 
@@ -1876,12 +1876,12 @@ bool CNetChan::ProcessMessages( bf_read &buf  )
 	const char * showmsgname = net_showmsg.GetString();
 	const char * blockmsgname = net_blockmsg.GetString();
 
-	if ( !Q_strcmp(showmsgname, "0") )
+	if ( showmsgname[0] == '0' )
 	{
 		showmsgname = NULL;	// dont do strcmp all the time
 	}
 
-	if ( !Q_strcmp(blockmsgname, "0") )
+	if ( blockmsgname[0] == '0' )
 	{
 		blockmsgname = NULL;	// dont do strcmp all the time
 	}

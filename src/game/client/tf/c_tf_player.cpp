@@ -333,7 +333,8 @@ ConVar sb_close_browser_on_connect( "sb_close_browser_on_connect", "1", FCVAR_AR
 ConVar tf_spectate_pyrovision( "tf_spectate_pyrovision", "0", FCVAR_ARCHIVE, "When on, spectator will see the world with Pyrovision active", VisionMode_ChangeCallback );
 ConVar tf_replay_pyrovision( "tf_replay_pyrovision", "0", FCVAR_ARCHIVE, "When on, replays will be seen with Pyrovision active", VisionMode_ChangeCallback );
 
-ConVar tf_taunt_first_person( "tf_taunt_first_person", "0", FCVAR_NONE, "1 = taunts remain first-person" );
+ConVar tf_taunt_first_person( "tf_taunt_first_person", "0", FCVAR_ARCHIVE, "1 = taunts remain first-person" );
+ConVar tf_taunt_first_person_always( "tf_taunt_first_person_always", "0", FCVAR_REPLICATED, "1 = taunts are forced to remain first-person" );
 
 ConVar tf_romevision_opt_in( "tf_romevision_opt_in", "0", FCVAR_ARCHIVE, "Enable Romevision in Mann vs. Machine mode when available." );
 ConVar tf_romevision_skip_prompt( "tf_romevision_skip_prompt", "0", FCVAR_ARCHIVE, "If nonzero, skip the prompt about sharing Romevision." );
@@ -667,6 +668,7 @@ public:
 	int GetDamageCustom() { return m_iDamageCustom; }
 
 	virtual bool GetAttachment( int iAttachment, matrix3x4_t &attachmentToWorld );
+	virtual bool GetAttachmentDeferred( int iAttachment, matrix3x4_t &attachmentToWorld );
 
 	int GetClass() { return m_iClass; }
 
@@ -1576,6 +1578,20 @@ bool C_TFRagdoll::GetAttachment( int iAttachment, matrix3x4_t &attachmentToWorld
 	else
 	{
 		return BaseClass::GetAttachment( iAttachment, attachmentToWorld );
+	}
+}
+
+bool C_TFRagdoll::GetAttachmentDeferred( int iAttachment, matrix3x4_t &attachmentToWorld )
+{
+	int iHeadAttachment = LookupAttachment( "head" );
+	if ( IsDecapitation() && (iAttachment == iHeadAttachment) )
+	{
+		MatrixCopy( m_mHeadAttachment, attachmentToWorld );
+		return true;
+	}
+	else
+	{
+		return BaseClass::GetAttachmentDeferred( iAttachment, attachmentToWorld );
 	}
 }
 
@@ -2907,7 +2923,9 @@ public:
 		}
 
 		C_BaseEntity *pBaseEntity = pRend->GetIClientUnknown()->GetBaseEntity();
-		const CEconItemView *pItem = dynamic_cast< CEconItemView* >( pRend );
+		CEconItemView *pItem = dynamic_cast< CEconItemView* >( pRend );
+
+		CEconItemViewDataCacher itemDataCacher(pItem);
 
 		uint32 unAttrValue = 0;
 		uint32 unEffectValue = 0;
@@ -2959,6 +2977,7 @@ public:
 					if ( pWearable )
 					{
 						pItem = pWearable->GetAttributeContainer()->GetItem();
+						itemDataCacher.SetItem(pItem);
 						pTFPlayer = ToTFPlayer( pWearable->GetOwnerEntity() );
 						break;
 					}
@@ -2968,6 +2987,7 @@ public:
 						if ( pModel->GetOuter() )
 						{
 							pItem = pModel->GetOuter()->GetAttributeContainer()->GetItem();
+							itemDataCacher.SetItem(pItem);
 							pBaseEntity = pBaseEntity->GetOwnerEntity();
 							if ( pItem )
 							{
@@ -2990,6 +3010,7 @@ public:
 							if ( pWeapon )
 							{
 								pItem = pWeapon->GetAttributeContainer()->GetItem();
+								itemDataCacher.SetItem(pItem);
 								pBaseEntity = pWeapon;
 							}
 							bIsFirstPerson = true;
@@ -3002,6 +3023,7 @@ public:
 						if ( pWeapon )
 						{
 							pItem = pWeapon->GetAttributeContainer()->GetItem();
+							itemDataCacher.SetItem(pItem);
 							pBaseEntity = pWeapon;
 						}
 					}
@@ -3010,6 +3032,7 @@ public:
 			else
 			{
 				pItem = pWeapon->GetAttributeContainer()->GetItem();
+				itemDataCacher.SetItem(pItem);
 				pBaseEntity = pWeapon;
 				pTFPlayer = ToTFPlayer( pWeapon->GetOwner() );
 			}
@@ -3031,6 +3054,7 @@ public:
 					if ( pTFPlayer && pTFPlayer->m_Shared.GetDisguiseWeapon() )
 					{
 						pItem = pTFPlayer->m_Shared.GetDisguiseWeapon()->GetAttributeContainer()->GetItem();
+						itemDataCacher.SetItem(pItem);
 						pBaseEntity = pTFPlayer->m_Shared.GetDisguiseWeapon();
 					}
 				}
@@ -3712,6 +3736,8 @@ public:
 		CEconItemView *pItem = GetEconItemViewFromProxyEntity( pC_BaseEntity );
 		if ( !pItem )
 			return;
+
+		CEconItemViewDataCacher dataCacher(pItem);
 
 		C_TFPlayer *pOwner = GetOwnerFromProxyEntity( pC_BaseEntity );
 		int desiredW = m_pBaseTextureOrig->GetActualWidth();
@@ -5916,7 +5942,7 @@ void C_TFPlayer::TurnOnTauntCam( void )
 	m_TauntCameraData.m_vecHullMin.Init( -9.0f, -9.0f, -9.0f );
 	m_TauntCameraData.m_vecHullMax.Init( 9.0f, 9.0f, 9.0f );
 
-	if ( tf_taunt_first_person.GetBool() )
+	if ( tf_taunt_first_person.GetBool() || tf_taunt_first_person_always.GetBool() )
 	{
 		// Remain in first-person.
 	}
@@ -7478,8 +7504,8 @@ void C_TFPlayer::UpdateIDTarget()
 
 	trace_t tr;
 	Vector vecStart, vecEnd;
-	VectorMA( MainViewOrigin(), MAX_TRACE_LENGTH, MainViewForward(), vecEnd );
-	VectorMA( MainViewOrigin(), 10,   MainViewForward(), vecStart );
+	VectorMA( MainViewOrigin(), 8192.0f, MainViewForward(), vecEnd );
+	VectorMA( MainViewOrigin(), 10.0f,   MainViewForward(), vecStart );
 
 	// If we're in observer mode, ignore our observer target. Otherwise, ignore ourselves.
 	if ( IsObserver() )
@@ -7488,14 +7514,6 @@ void C_TFPlayer::UpdateIDTarget()
 	}
 	else
 	{
-		// Add DEBRIS when a medic has revive (for tracing against revive markers)
-		int iReviveMedic = 0;
-		CALL_ATTRIB_HOOK_INT( iReviveMedic, revive );
-		if ( TFGameRules() && TFGameRules()->GameModeUsesUpgrades() && pLocalPlayer->IsPlayerClass( TF_CLASS_MEDIC ) )
-		{
-			iReviveMedic = 1;
-		}
-
 		int nMask = MASK_SOLID | CONTENTS_DEBRIS;
 		UTIL_TraceLine( vecStart, vecEnd, nMask, this, COLLISION_GROUP_NONE, &tr );
 	}

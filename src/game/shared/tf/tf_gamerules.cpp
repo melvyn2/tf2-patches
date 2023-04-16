@@ -5848,7 +5848,7 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 					eDamageBonusCond = TF_COND_OFFENSEBUFF;
 				}
 			}
-			else if ( pTFAttacker && (bitsDamage & DMG_RADIUS_MAX) && pWeapon && ( (pWeapon->GetWeaponID() == TF_WEAPON_SWORD) || (pWeapon->GetWeaponID() == TF_WEAPON_BOTTLE)|| (pWeapon->GetWeaponID() == TF_WEAPON_WRENCH) ) )
+			else if ( pTFAttacker && (bitsDamage & DMG_RADIUS_MAX) && pWeapon && ( (pWeapon->GetWeaponID() == TF_WEAPON_SWORD) || (pWeapon->GetWeaponID() == TF_WEAPON_BOTTLE) || (pWeapon->GetWeaponID() == TF_WEAPON_WRENCH) || (pWeapon->GetWeaponID() == TF_WEAPON_STICKBOMB) || (pWeapon->GetWeaponID() == TF_WEAPON_SHOVEL) ) )
 			{
 				// First sword or bottle attack after a charge is a mini-crit.
 				bAllSeeCrit = true;
@@ -6183,7 +6183,7 @@ bool CTFGameRules::ApplyOnDamageModifyRules( CTakeDamageInfo &info, CBaseEntity 
 	}
 
 	int iPierceResists = 0;
-	CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iPierceResists, mod_ignore_resists_absorbs );
+	CALL_ATTRIB_HOOK_INT_ON_OTHER( pWeapon, iPierceResists, mod_pierce_resists_absorbs );
 
 	// Use defense buffs if it's not a backstab or direct crush damage (telefrage, etc.)
 	if ( pVictim && info.GetDamageCustom() != TF_DMG_CUSTOM_BACKSTAB && ( info.GetDamageType() & DMG_CRUSH ) == 0 )
@@ -6833,10 +6833,11 @@ float CTFGameRules::ApplyOnDamageAliveModifyRules( const CTakeDamageInfo &info, 
 		// Check if we're immune
 		outParams.bPlayDamageReductionSound = CheckForDamageTypeImmunity( info.GetDamageType(), pVictim, flDamageBase, flDamageBonus );
 
+		// Reduce only the crit portion of the damage with crit resist
+			bool bCrit = ( info.GetDamageType() & DMG_CRITICAL ) > 0;
+
 		if ( !iPierceResists )
 		{
-			// Reduce only the crit portion of the damage with crit resist
-			bool bCrit = ( info.GetDamageType() & DMG_CRITICAL ) > 0;
 			if ( bCrit )
 			{
 				// Break the damage down and reassemble
@@ -6876,15 +6877,23 @@ float CTFGameRules::ApplyOnDamageAliveModifyRules( const CTakeDamageInfo &info, 
 					outParams.bPlayDamageReductionSound = CheckMedicResist( TF_COND_MEDIGUN_SMALL_BLAST_RESIST, TF_COND_MEDIGUN_UBER_BLAST_RESIST, pVictim, flRawDamage, flDamageBase, bCrit, flDamageBonus );
 				}
 			}
+		}
 
-			if ( info.GetDamageType() & (DMG_BULLET|DMG_BUCKSHOT) )
+		if ( info.GetDamageType() & (DMG_BULLET|DMG_BUCKSHOT) )
+		{
+			float flResist = 1.0f;
+			CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pVictim, flResist, mult_dmgtaken_from_bullets );
+			// If the resist is actually a vulnerability, apply it even if we're piercing resists
+			if ( flResist > 1.0f || !iPierceResists )
 			{
-				CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pVictim, flDamageBase, mult_dmgtaken_from_bullets );
-
+				flDamageBase *= flResist;
 				// Check for medic resist
 				outParams.bPlayDamageReductionSound = CheckMedicResist( TF_COND_MEDIGUN_SMALL_BULLET_RESIST, TF_COND_MEDIGUN_UBER_BULLET_RESIST, pVictim, flRawDamage, flDamageBase, bCrit, flDamageBonus );
 			}
+		}
 
+		if ( !iPierceResists )
+		{
 			if ( info.GetDamageType() & DMG_MELEE )
 			{
 				CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pVictim, flDamageBase, mult_dmgtaken_from_melee );
@@ -7055,7 +7064,7 @@ float CTFGameRules::ApplyOnDamageAliveModifyRules( const CTakeDamageInfo &info, 
 			return -1;
 		}
 
-		if ( pAttacker == pVictimBaseEntity && (info.GetDamageType() & DMG_BLAST) &&
+		if ( pAttacker == pVictimBaseEntity && (info.GetDamageType() & DMG_BLAST || info.GetDamageCustom() == TF_DMG_CUSTOM_FLARE_EXPLOSION) &&
 			 info.GetDamagedOtherPlayers() == 0 && (info.GetDamageCustom() != TF_DMG_CUSTOM_TAUNTATK_GRENADE) )
 		{
 			// If we attacked ourselves, hurt no other players, and it is a blast,
@@ -16381,7 +16390,7 @@ bool CTFGameRules::PlayerMayBlockPoint( CBasePlayer *pPlayer, int iPointIndex, c
 #endif
 
 	// Invuln players can block points
-	if ( pTFPlayer->m_Shared.IsInvulnerable() )
+	if ( pTFPlayer->m_Shared.IsInvulnerable()|| pTFPlayer->m_Shared.InCond( TF_COND_MEGAHEAL ) )
 	{
 		if ( pszReason )
 		{
@@ -20173,10 +20182,10 @@ void CTFGameRules::BetweenRounds_Think( void )
 		bool bStartFinalCountdown = ( PlayerReadyStatus_ShouldStartCountdown() || ( m_flRestartRoundTime > 0 && (int)( m_flRestartRoundTime - gpGlobals->curtime ) == mp_tournament_readymode_countdown.GetInt() ) );
 
 		// It's the FINAL COUNTDOOOWWWNNnnnnnnnnn
-		float flDropDeadTime = gpGlobals->curtime + mp_tournament_readymode_countdown.GetFloat() + 0.1f;
+		float flDelay = IsMannVsMachineMode() ? 15.f : mp_tournament_readymode_countdown.GetFloat();
+		float flDropDeadTime = gpGlobals->curtime + flDelay + 0.1f;
 		if ( bStartFinalCountdown && ( m_flRestartRoundTime < 0 || m_flRestartRoundTime >= flDropDeadTime ) )
 		{
-			float flDelay = IsMannVsMachineMode() ? 10.f : mp_tournament_readymode_countdown.GetFloat();
 			m_flRestartRoundTime.Set( gpGlobals->curtime + flDelay );
 			ShouldResetScores( true, true );
 			ShouldResetRoundsPlayed( true );

@@ -100,7 +100,6 @@ static CTextureReference g_ResolvedFullFrameDepth;
 void WorldStaticMeshCreate( void );
 void WorldStaticMeshDestroy( void );
 
-ConVar	r_norefresh( "r_norefresh","0");
 ConVar	r_decals( "r_decals", "2048" );
 ConVar	mp_decals( "mp_decals","200", FCVAR_ARCHIVE);
 ConVar	r_lightmap( "r_lightmap", "-1", FCVAR_CHEAT | FCVAR_MATERIAL_SYSTEM_THREAD );
@@ -137,10 +136,6 @@ ConVar r_flashlightdepthtexture( "r_flashlightdepthtexture", "1" );
 ConVar r_waterforceexpensive( "r_waterforceexpensive", "0", FCVAR_ARCHIVE );
 #endif
 ConVar r_waterforcereflectentities( "r_waterforcereflectentities", "0" );
-
-// Note: this is only here so we can ship an update without changing materialsystem.dll.
-// Once we ship materialsystem.dll again, we can get rid of this and make the only one exist in materialsystem.dll.
-ConVar mat_depthbias_normal( "mat_depthbias_normal", "0.0f", FCVAR_CHEAT );
 
 // This is here so that the client and the materialsystem can both see this.
 ConVar mat_show_ab_hdr( "mat_show_ab_hdr", "0" );
@@ -413,7 +408,7 @@ static void ReadMaterialSystemConfigFromRegistry( MaterialSystem_Config_t &confi
 	config.SetFlag( MATSYS_VIDCFG_FLAGS_WINDOWED, ReadVideoConfigInt( "ScreenWindowed", 0 ) != 0 );
 #if defined( USE_SDL ) && !defined( SWDS )
 	// Read the ScreenDisplayIndex and set sdl_displayindex if it's there.
-	ConVarRef conVar( "sdl_displayindex" );
+	static ConVarRef conVar( "sdl_displayindex" );
 	if ( conVar.IsValid() )
 	{
 		int displayIndex = 0;
@@ -532,7 +527,7 @@ static void WriteMaterialSystemConfigToRegistry( const MaterialSystem_Config_t &
 
 #if defined( USE_SDL ) && !defined( SWDS )
 	// Save sdl_displayindex out to ScreenDisplayIndex.
-	ConVarRef conVar( "sdl_displayindex" );
+	static ConVarRef conVar( "sdl_displayindex" );
 	if ( conVar.IsValid() && !UseVR() )
 	{
 		WriteVideoConfigInt( "ScreenDisplayIndex", conVar.GetInt() );
@@ -684,7 +679,7 @@ void OverrideMaterialSystemConfig( MaterialSystem_Config_t &config )
 {
 	// enable/disable flashlight support based on mod (user can also set this explicitly)
 	// FIXME: this is only here because dxsupport_override.cfg is currently broken
-	ConVarRef mat_supportflashlight( "mat_supportflashlight" );
+	static ConVarRef mat_supportflashlight( "mat_supportflashlight" );
 	if ( mat_supportflashlight.GetInt() == -1 )
 	{
 		const char * gameName = COM_GetModDirectory();

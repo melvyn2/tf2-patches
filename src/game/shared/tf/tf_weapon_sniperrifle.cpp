@@ -523,19 +523,19 @@ void CTFSniperRifle::ZoomOutIn( void )
 	ZoomOut();
 
 	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	float flRezoomDelay = 0.9f;
+	if ( !UsesClipsForAmmo1() )
+	{
+		// Since sniper rifles don't actually use clips the fast reload hook also affects unzoom and zoom delays
+		ApplyScopeSpeedModifications( flRezoomDelay );
+	}
 	if ( pPlayer && pPlayer->ShouldAutoRezoom() )
 	{
-		float flRezoomDelay = 0.9f;
-		if ( !UsesClipsForAmmo1() )
-		{
-			// Since sniper rifles don't actually use clips the fast reload hook also affects unzoom and zoom delays
-			ApplyScopeSpeedModifications( flRezoomDelay );
-		}
 		m_flRezoomTime = gpGlobals->curtime + flRezoomDelay;
 	}
 	else
 	{
-		m_flNextSecondaryAttack = gpGlobals->curtime + 1.0f;
+		m_flNextSecondaryAttack = gpGlobals->curtime + flRezoomDelay + 0.1f;
 	}
 }
 
@@ -1517,12 +1517,14 @@ bool CSniperDot::GetRenderingPositions( C_TFPlayer *pPlayer, Vector &vecAttachme
 		{
 			// Take the owning player eye position and direction.
 			vecAttachment = pPlayer->EyePosition();
-			QAngle anglesEye = pPlayer->EyeAngles();
-			AngleVectors( anglesEye, &vecDir );
+			// UNDONE: trace out to the networked origin (which is more accurate than the networked view angles)
+			vecDir = GetAbsOrigin() - vecAttachment;
+			VectorNormalize( vecDir );
 		}
 
 		trace_t tr;
 		CTraceFilterIgnoreFriendlyCombatItems filter( pPlayer, COLLISION_GROUP_NONE, pPlayer->GetTeamNumber() );
+		// For our own angles, we can use them
 		UTIL_TraceLine( vecAttachment, vecAttachment + ( vecDir * flDist ), MASK_SHOT, &filter, &tr );
 
 		// Backup off the hit plane, towards the source

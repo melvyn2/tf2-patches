@@ -2710,6 +2710,7 @@ void CTFPlayerShared::ConditionGameRulesThink( void )
 		if ( m_pOuter->IsAllowedToRemoveTaunt() && gpGlobals->curtime > m_pOuter->GetTauntRemoveTime() )
 		{
 			RemoveCond( TF_COND_TAUNTING );
+			m_pOuter->m_bAllowMoveDuringTaunt = false; // Make sure we clear out this flag
 		}
 	}
 
@@ -5573,7 +5574,10 @@ void CTFPlayerShared::OnAddHalloweenKartCage( void )
 	if ( !m_pOuter->m_hHalloweenKartCage )
 	{
 		m_pOuter->m_hHalloweenKartCage = C_PlayerAttachedModel::Create( "models/props_halloween/bumpercar_cage.mdl", m_pOuter, 0, vec3_origin, PAM_PERMANENT, 0 );
-		m_pOuter->m_hHalloweenKartCage->FollowEntity( m_pOuter, true );
+		if ( m_pOuter->m_hHalloweenKartCage )
+		{
+			m_pOuter->m_hHalloweenKartCage->FollowEntity( m_pOuter, true );
+		}
 	}
 #else
 	AddCond( TF_COND_FREEZE_INPUT );
@@ -10095,8 +10099,8 @@ void CTFPlayer::FireBullet( CTFWeaponBase *pWpn, const FireBulletsInfo_t &info, 
 }
 
 #ifdef CLIENT_DLL
-static ConVar tf_impactwatertimeenable( "tf_impactwatertimeenable", "0", FCVAR_CHEAT, "Draw impact debris effects." );
-static ConVar tf_impactwatertime( "tf_impactwatertime", "1.0f", FCVAR_CHEAT, "Draw impact debris effects." );
+static ConVar tf_impactwatertimeenable( "tf_impactwatertimeenable", "1", 0, "Rate limit bullet impact effects on water." );
+static ConVar tf_impactwatertime( "tf_impactwatertime", "0.2f", 0, "The interval between bullet impact effects on water." );
 #endif
 
 //-----------------------------------------------------------------------------
@@ -10406,6 +10410,7 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 	}
 
 	CTFWeaponBase* pWeapon = GetActiveTFWeapon();
+	const bool bWeaponReady = pWeapon && gpGlobals->curtime >= pWeapon->GetLastReadyTime();
 	if ( pWeapon )
 	{
 		maxfbspeed *= pWeapon->GetSpeedMod();
@@ -10460,9 +10465,9 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 
 	// If we have an item with a move speed modification, apply it to the final speed.
 	CALL_ATTRIB_HOOK_FLOAT( maxfbspeed, mult_player_movespeed );
-	if ( GetActiveTFWeapon() )
+	if ( bWeaponReady )
 	{
-		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( GetActiveTFWeapon(), maxfbspeed, mult_player_movespeed_active )
+		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pWeapon, maxfbspeed, mult_player_movespeed_active )
 	}
 
 	if ( m_Shared.IsShieldEquipped() )
@@ -10504,7 +10509,10 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 	}
 
 	float flClassResourceLevelMod = 1.f;
-	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pWeapon, flClassResourceLevelMod, mult_player_movespeed_resource_level );
+	if ( bWeaponReady )
+	{
+		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pWeapon, flClassResourceLevelMod, mult_player_movespeed_resource_level );
+	}
 	if ( flClassResourceLevelMod != 1.f )
 	{
 		// Medic Uber
@@ -10522,12 +10530,17 @@ float CTFPlayer::TeamFortress_CalculateMaxSpeed( bool bIgnoreSpecialAbility /*= 
 	if ( playerclass == TF_CLASS_HEAVYWEAPONS )
 	{
 		float heavy_max_speed = default_speed * 1.35f;
-		if ( m_Shared.InCond( TF_COND_ENERGY_BUFF ) )
+		// We don't stack with other speed boosts like the GRU, they make berzerker mode too fast
+		// but if we are already faster than the berzerker speed, then we won't shift the speed back down
+		// (like with MvM upgrades)
+		if ( m_Shared.InCond( TF_COND_ENERGY_BUFF ) && maxfbspeed <= heavy_max_speed )
 		{
+			// If we aren't already above the cap, then boost our speed by 35%, but only up to 135%.
+			// this means if we are slower than normal, we boost relative to that, but if we are faster
+			// than normal, we only boost up to the cap.
 			maxfbspeed *= 1.35f;
 			if ( maxfbspeed > heavy_max_speed )
 			{
-				// Prevent other speed modifiers like GRU from making berzerker mode too fast.
 				maxfbspeed = heavy_max_speed;
 			}
 		}
@@ -12168,7 +12181,7 @@ bool CTFPlayer::CanAirDash( void ) const
 	}
 
 	int iDashCount = tf_scout_air_dash_count.GetInt();
-	if ( GetActiveWeapon() && ( !GetActiveTFWeapon()->GetWeaponID() == TF_WEAPON_BAT || gpGlobals->curtime - GetActiveTFWeapon()->GetLastDeployTime() > 0.7f ) )
+	if ( GetActiveWeapon() && gpGlobals->curtime >= GetActiveTFWeapon()->GetLastReadyTime() )
 	{
 		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( GetActiveWeapon(), iDashCount, air_dash_count );
 	}

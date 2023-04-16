@@ -1560,7 +1560,7 @@ void CBaseObject::SetHealth( float flHealth )
 	bool changed = m_flHealth != flHealth;
 
 	m_flHealth = flHealth;
-	m_iHealth = ceil(m_flHealth);
+	m_iHealth = Ceil2Int(m_flHealth);
 
 
 	/*
@@ -1942,6 +1942,9 @@ int CBaseObject::OnTakeDamage( const CTakeDamageInfo &info )
 		break;
 	}
 
+	// Round up damage like players
+	flDamage = Ceil2Int( flDamage );
+
 	// Don't look, Tom Bui!
 	static struct
 	{
@@ -1978,7 +1981,7 @@ int CBaseObject::OnTakeDamage( const CTakeDamageInfo &info )
 
 	if ( flDamage )
 	{
-		m_iLifetimeDamage += floor( MIN( flDamage, m_flHealth ) );
+		m_iLifetimeDamage += Floor2Int( MIN( flDamage, m_flHealth ) );
 		if ( m_iLifetimeDamage > tf_obj_damage_tank_achievement_amount.GetInt() && GetBuilder() )
 		{
 			GetBuilder()->AwardAchievement( ACHIEVEMENT_TF_ENGINEER_TANK_DAMAGE );
@@ -2913,7 +2916,7 @@ bool CBaseObject::Command_Repair( CTFPlayer *pActivator, float flRepairMod )
 	int iAmountToHeal = MIN( flTargetHeal, GetMaxHealth() - RoundFloatToInt( GetHealth() ) );
 
 	// repair the building
-	int iRepairCost = ceil( (float)( iAmountToHeal ) / flRepairToMetalRatio );
+	int iRepairCost = Ceil2Int( (float)( iAmountToHeal ) / flRepairToMetalRatio );
 
 	TRACE_OBJECT( UTIL_VarArgs( "%0.2f CBaseObject::Command_Repair ( %f / %d ) - cost = %d\n", gpGlobals->curtime, 
 		GetHealth(),

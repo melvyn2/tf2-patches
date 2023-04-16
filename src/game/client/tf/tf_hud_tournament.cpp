@@ -160,7 +160,7 @@ void CHudTournament::PlaySounds( int nTime )
 			}
 			break;
 		}
-		case 10:
+		case 15:
 		{
 			if ( TFGameRules() && TFGameRules()->IsMannVsMachineMode() )
 			{
@@ -184,7 +184,11 @@ void CHudTournament::PlaySounds( int nTime )
 					pLocalPlayer->EmitSound( "Announcer.MVM_Wave_Start" );
 				}
 			}
-			else
+			break;
+		}
+		case 10:
+		{
+			if ( TFGameRules() && !TFGameRules()->IsMannVsMachineMode() )
 			{
 				pLocalPlayer->EmitSound( bCompetitiveMode ? "Announcer.CompGame1Begins10Seconds" : "Announcer.RoundBegins10Seconds" );
 			}
@@ -315,7 +319,7 @@ void CHudTournament::PreparePanel( void )
 		else
 		{
 			float flTime = TFGameRules()->GetRoundRestartTime() - gpGlobals->curtime;
-			int nTime = (int)( ceil( flTime ) );
+			int nTime = Ceil2Int( flTime );
 			
 			wchar szCountdown[64];
 			wchar_t wzVal[16];
